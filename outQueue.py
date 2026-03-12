@@ -1,6 +1,7 @@
 import asyncio
 
 from PacketConstruction import pack
+from manchester import GPIO, GPIO_PIN, BIT_PERIOD
 
 # Type bits, values determine by the protocol designed
 TYPE_ACK = 0
@@ -9,9 +10,29 @@ TYPE_NEXT = 2 # signal from main that an ack has been recived, and to move on to
 TYPE_DATA = 3
 
 async def transmitPacket(packet_data):
-    # needs to be completed
+    # basically just coppied from manchester.py hopefully it works
 
-    # time needed to transmit (calculate based on clock speed)
+    # Start bit
+    GPIO.output(GPIO_PIN, GPIO.LOW)
+    await asyncio.sleep(BIT_PERIOD)
+
+    # Data bits (LSB first)
+    for i in range(64):
+        bit = True if (packet_data >> i) & 1 else False
+        for x in range(2):  # It takes two clock cycles for every bit for Manchester encoding
+            clock = True if x == 1 else False
+
+            # Manchester Encoding
+            outBit = clock ^ bit
+
+            GPIO.output(GPIO_PIN, GPIO.HIGH if outBit else GPIO.LOW)
+            await asyncio.sleep(BIT_PERIOD)
+
+    # Stop bit
+    GPIO.output(GPIO_PIN, GPIO.LOW)
+    await asyncio.sleep(BIT_PERIOD)
+
+    # short pause after whole packet to allow receiver to sync
     await asyncio.sleep(0.05)
 
 def build_chunk(raw_bytes):
