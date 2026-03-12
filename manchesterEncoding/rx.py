@@ -1,8 +1,8 @@
 import pigpio
 import time
 
-RX_PIN = 13
-bit_time = 10          # microseconds
+RX_PIN = 17
+bit_time = 1000          # microseconds
 half_bit = bit_time / 2
 
 pi = pigpio.pi()
@@ -10,11 +10,19 @@ pi = pigpio.pi()
 last_tick = None
 last_level = None
 
-half_seen = False
+state = "WAIT_EDGE"
 bits = []
 
+def decode_bit(prev, curr):
+    if prev == 0 and curr == 1:
+        return 1
+    if prev == 1 and curr == 0:
+        return 0
+    return None
+
+
 def edge_callback(gpio, level, tick):
-    global last_tick, last_level, half_seen, bits
+    global last_tick, last_level, state, bits
 
     if last_tick is None:
         last_tick = tick
@@ -23,38 +31,42 @@ def edge_callback(gpio, level, tick):
 
     dt = pigpio.tickDiff(last_tick, tick)
 
-    # Detect frame break (3 bit-times silence)
+    # frame break
     if dt > bit_time * 3:
         if bits:
             print("Frame:", bits)
         bits = []
-        half_seen = False
+        state = "WAIT_EDGE"
         last_tick = tick
         last_level = level
         return
 
-    # Detect half-bit transition
-    if abs(dt - half_bit) < half_bit * 0.5:
+    # classify timing
+    short = abs(dt - half_bit) < half_bit * 0.6
+    long = abs(dt - bit_time) < half_bit
 
-        if half_seen:
-            # This is the mid-bit transition
-            if last_level == 0 and level == 1:
-                bits.append(1)
-            elif last_level == 1 and level == 0:
-                bits.append(0)
+    if state == "WAIT_EDGE":
 
-            half_seen = False
+        if short:
+            state = "EXPECT_MID"
+
+        elif long:
+            bit = decode_bit(last_level, level)
+            if bit is not None:
+                bits.append(bit)
+
+    elif state == "EXPECT_MID":
+
+        if short:
+            bit = decode_bit(last_level, level)
+            if bit is not None:
+                bits.append(bit)
+
+            state = "WAIT_EDGE"
+
         else:
-            half_seen = True
-
-    # Detect full-bit transition (missed half)
-    elif abs(dt - bit_time) < half_bit:
-        if last_level == 0 and level == 1:
-            bits.append(1)
-        elif last_level == 1 and level == 0:
-            bits.append(0)
-
-        half_seen = False
+            # unexpected timing → reset
+            state = "WAIT_EDGE"
 
     last_tick = tick
     last_level = level
@@ -64,11 +76,12 @@ pi.set_mode(RX_PIN, pigpio.INPUT)
 
 cb = pi.callback(RX_PIN, pigpio.EITHER_EDGE, edge_callback)
 
-print("Listening for Manchester data...")
+print("Manchester receiver running...")
 
 try:
     while True:
         time.sleep(1)
+
 except KeyboardInterrupt:
     cb.cancel()
     pi.stop()
