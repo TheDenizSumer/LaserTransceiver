@@ -32,18 +32,31 @@ def pack(packetType: int, numID: int, data: bytes) -> bytes:
     return padded.to_bytes(8, byteorder='big')
 
 
-def unpack(packet: bytes):
+def unpack(packet: bytes | int):
+    """
+    Inverse of `pack` with single‑bit error correction.
+
+    Accepts either:
+    - 8‑byte `bytes` codeword (normal case), or
+    - an `int` representing the 64‑bit codeword.
+    """
     BigError = False
 
-    bit_len = packet.bit_length()
+    # Normalise to integer representation.
+    if isinstance(packet, bytes):
+        packet_int = int.from_bytes(packet, "big")
+    else:
+        packet_int = int(packet)
+
+    bit_len = max(packet_int.bit_length(), 1)
 
     # remove leftmost bit
-    packet = packet & ((1 << (bit_len - 1)) - 1)
+    packet_int = packet_int & ((1 << (bit_len - 1)) - 1)
 
     # remove rightmost bit
-    packet = packet >> 1
+    packet_int = packet_int >> 1
 
-    codeword = int.from_bytes(packet, 'big')
+    codeword = packet_int
 
     overallParity = (codeword >> 63) & 1
     

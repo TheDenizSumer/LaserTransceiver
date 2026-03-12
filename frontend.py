@@ -42,6 +42,9 @@ class LaserTransceiverFrontend:
         # Where to read/write binary image data (organized under IO/ by default).
         base_dir = os.path.dirname(os.path.abspath(__file__))
         io_dir = os.path.join(base_dir, "IO")
+        # Convention:
+        # - `input`  : bytes RECEIVED from the other Pi (to be displayed)
+        # - `output` : bytes TO SEND to the other Pi (written by this UI)
         # Allow custom paths to override, but default to IO/input and IO/output.
         self.input_path = os.path.abspath(input_path or os.path.join(io_dir, "input"))
         self.output_path = os.path.abspath(output_path or os.path.join(io_dir, "output"))
@@ -53,6 +56,7 @@ class LaserTransceiverFrontend:
         # Keep a reference to the active image object to prevent garbage collection.
         self._tk_image = None
         self._pil_image = None  # original PIL image (if loaded)
+        # Path/bytes of the LAST RECEIVED image (from `input`), not the outbound one.
         self._image_path: Optional[str] = None
         self._image_bytes: Optional[bytes] = None
         self._render_after_id: Optional[str] = None
@@ -145,11 +149,15 @@ class LaserTransceiverFrontend:
             return
 
         try:
-            # Per spec: uploading a new image should NOT display it directly.
-            # It should only write bytes into `input` (truncate first). The poller
-            # is the ONLY thing that updates the image display.
-            self.set_image(file_path)
-            self.status_var.set(f"Wrote {os.path.basename(self.input_path)} from upload ({os.path.getsize(self.input_path)} bytes)")
+            # Uploading a new image:
+            # - write it to the OUTPUT file so `main.py` can transmit it
+            # - do NOT display it directly; only display bytes that arrive
+            #   over the link and are written into `input`.
+            self._write_output_image(file_path)
+            self.status_var.set(
+                f"Wrote {os.path.basename(self.output_path)} from upload "
+                f"({os.path.getsize(self.output_path)} bytes)"
+            )
         except Exception as e:
             messagebox.showerror("Unable to load image", f"{e}")
 
@@ -158,37 +166,49 @@ class LaserTransceiverFrontend:
         Stub hook for future wiring.
         Replace `on_send` when constructing this class, or edit this method.
         """
-        # Always write the current image bytes to the output file (binary), per spec.
+        # The actual transmission is driven by `main.py` polling `IO/output`,
+        # so "Send" here is just a logical hook for future wiring.
+        # We still invoke the optional callback if provided.
         try:
-            self._write_output_file()
+            if self._on_send is not None:
+                self._on_send()
+            self.status_var.set(
+                f"Ready to transmit: {os.path.basename(self.output_path)} "
+                f"({os.path.getsize(self.output_path)} bytes)"
+            )
         except Exception as e:
             messagebox.showerror("Send failed", f"{e}")
             return
 
-        # Optional extra callback for future wiring (laser TX, etc).
-        if self._on_send is not None:
-            self._on_send()
-
-        self.status_var.set(f"Wrote {os.path.basename(self.output_path)} ({os.path.getsize(self.output_path)} bytes)")
-
     def set_image(self, file_path: str) -> None:
         """
-        Write an image into the `input` file (binary).
+        Backwards-compatible helper that writes an image file into the
+        **output** file (binary), so that `main.py` can transmit it.
 
-        This function is intended to be called:
-        - by the Upload button after selecting a local image
-        - by other scripts/modules in the future
+        This is primarily kept for external callers; the Upload button uses
+        `_write_output_image` directly.
         """
         file_path = os.path.abspath(file_path)
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File not found: {file_path}")
 
-        # IMPORTANT: Do NOT render the image directly here.
-        # The image display should only ever reflect the contents of `input`.
-        # We therefore just copy bytes into `input` and let the poller decode+render.
+        self._write_output_image(file_path)
+
+    def _write_output_image(self, file_path: str) -> None:
+        """
+        Helper: overwrite the `output` file with the raw bytes of `file_path`.
+        This is what the sender side (`main.py`) will pull from.
+        """
+        file_path = os.path.abspath(file_path)
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"File not found: {file_path}")
+
         with open(file_path, "rb") as f:
             data = f.read()
-        self._write_input_file(data)
+
+        # Completely replace previous outbound data.
+        with open(self.output_path, "wb") as out_f:
+            out_f.write(data)
 
     def set_image_bytes(self, image_bytes: bytes, *, name: str = "input") -> None:
         """
