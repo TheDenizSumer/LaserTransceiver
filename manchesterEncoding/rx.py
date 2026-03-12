@@ -9,6 +9,7 @@ pi = pigpio.pi()
 
 last_tick = None
 last_level = None
+alreadyShort = False
 
 state = "WAIT_EDGE"
 bits = []
@@ -19,6 +20,7 @@ bits = []
 #     if prev == 1 and curr == 0:
 #         return 0
 #     return None
+
 
 
 def edge_callback(gpio, level, tick):
@@ -32,13 +34,19 @@ def edge_callback(gpio, level, tick):
     dt = pigpio.tickDiff(last_tick, tick)
     last_tick = tick
     if dt < bit_time*1.5:
-        if bits == []:
-            bits.append(0)
+        if alreadyShort:
+            alreadyShort = False
+            if bits == []:
+                bits.append(0)
+            else:
+                bits.append(bits[-1])
         else:
-            bits.append(bits[-1])
+            alreadyShort = True
     elif dt < bit_time*2.5:
+        alreadyShort = False
         bits.append(bits[-1] ^ 1)
     else:
+        alreadyShort = False
         print("Frame:", bits)
         bits = []
     print(dt)

@@ -25,5 +25,5 @@ def send_packet(bits):
     for b in bits:
         send_bit(b)
 
-packet = [1,0,1,1,0,0,1]
+packet = [0,1,0,1,1,0,0,1,0,0]
 send_packet(packet)
