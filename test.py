@@ -3,9 +3,6 @@ import asyncio
 
 packet_data = 0b0100100110110 # Example packet data
 
-
-import pigpio
-
 import pigpio
 
 pi = pigpio.pi()
@@ -13,7 +10,7 @@ import time
 
 TX_PIN = 27
 bit_time = 1000 #mircoseconds
-bit_time *= 1/1000000 # convert to seconds
+BIT_PERIOD *= 1/1000000 # convert to seconds
 
 pi.set_mode(TX_PIN, pigpio.OUTPUT)
 
