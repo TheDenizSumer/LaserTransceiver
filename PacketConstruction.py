@@ -7,6 +7,10 @@ highlight_color = '\033[93m' #yellow - flipped bits
 reset = '\033[0m'
 
 
+
+    
+
+
 def pack(packetType: int, numID: int, data: bytes) -> bytes:
     #if(packetType == 0): #normal data packet
 
@@ -22,13 +26,23 @@ def pack(packetType: int, numID: int, data: bytes) -> bytes:
     word = overallParity << 63 | codeword
 
     #word = flipBitStream(word)
+
+    padded = 0 << 64 | word | 0
     
-    return word.to_bytes(8, byteorder='big')
+    return padded.to_bytes(8, byteorder='big')
 
 
 def unpack(packet: bytes):
     BigError = False
-    
+
+    bit_len = packet.bit_length()
+
+    # remove leftmost bit
+    packet = packet & ((1 << (bit_len - 1)) - 1)
+
+    # remove rightmost bit
+    packet = packet >> 1
+
     codeword = int.from_bytes(packet, 'big')
 
     overallParity = (codeword >> 63) & 1

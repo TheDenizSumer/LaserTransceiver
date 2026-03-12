@@ -69,7 +69,8 @@ def read_bytes(n_bytes: int, *, output_path: Optional[str] = None) -> list[bytes
         raise FileNotFoundError(f"Output file not found at: {path}") from e
 
     # Return as a list of 1-byte `bytes` objects.
-    return [bytes([b]) for b in take]
+    return bytearray(take)
+    #return [bytes([b]) for b in take]
 
 
 __all__ = ["read_bytes"]
