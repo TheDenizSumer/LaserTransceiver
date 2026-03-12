@@ -30,46 +30,21 @@ def edge_callback(gpio, level, tick):
         return
 
     dt = pigpio.tickDiff(last_tick, tick)
+    print(dt)
+    # # frame break
+    # if dt > bit_time * 3:
+    #     if bits:
+    #         print("Frame:", bits)
+    #     bits = []
+    #     state = "WAIT_EDGE"
+    #     last_tick = tick
+    #     last_level = level
+    #     return
 
-    # frame break
-    if dt > bit_time * 3:
-        if bits:
-            print("Frame:", bits)
-        bits = []
-        state = "WAIT_EDGE"
-        last_tick = tick
-        last_level = level
-        return
+    # # classify timing
+    # short = abs(dt - half_bit) < half_bit * 0.6
+    # long = abs(dt - bit_time) < half_bit
 
-    # classify timing
-    short = abs(dt - half_bit) < half_bit * 0.6
-    long = abs(dt - bit_time) < half_bit
-
-    if state == "WAIT_EDGE":
-
-        if short:
-            state = "EXPECT_MID"
-
-        elif long:
-            bit = decode_bit(last_level, level)
-            if bit is not None:
-                bits.append(bit)
-
-    elif state == "EXPECT_MID":
-
-        if short:
-            bit = decode_bit(last_level, level)
-            if bit is not None:
-                bits.append(bit)
-
-            state = "WAIT_EDGE"
-
-        else:
-            # unexpected timing → reset
-            state = "WAIT_EDGE"
-
-    last_tick = tick
-    last_level = level
 
 
 pi.set_mode(RX_PIN, pigpio.INPUT)
