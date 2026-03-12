@@ -24,7 +24,7 @@ bits = []
 
 
 def edge_callback(gpio, level, tick):
-    global last_tick, last_level, state, bits
+    global last_tick, last_level, state, bits, alreadyShort
 
     if last_tick is None:
         last_tick = tick
