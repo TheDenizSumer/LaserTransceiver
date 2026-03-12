@@ -1,5 +1,7 @@
 import asyncio
 
+from PacketConstruction import pack
+
 # Type bits, values determine by the protocol designed
 TYPE_ACK = 0
 TYPE_SB = 1
@@ -16,17 +18,22 @@ def build_chunk(raw_bytes):
     packets = []
     
     # pad with 0's
-    data = raw_bytes[:24].ljust(24, b'\x00')
+    data = raw_bytes[:48].ljust(48, b'\x00')
     
     # build 8 data packets
     for i in range(8):
-        # extract 3 bytes per packet
-        payload = data[i*3 : (i+1)*3]
+        # extract 6 bytes per packet
+        payload = data[i*6 : (i+1)*6]
         
-        header = bytes([i]) # Placeholder header
-        parity = b'\x00'    # Placeholder parity
+        #header = bytes([i]) # Placeholder header
+        #parity = b'\x00'    # Placeholder parity
+        #packet = header + payload + parity
 
-        packet = header + payload + parity
+        packetType = TYPE_DATA #temp
+        numID = i 
+
+        packet = pack(packetType, numID, payload)
+
         packets.append(packet)
 
     return packets
@@ -61,8 +68,8 @@ async def outLaserWorker(queue):
             queue.task_done()
         
         if not activeChunk and len(rawBuffer) > 0: #there is data to send
-            chunkBytes = rawBuffer[:24] # 8 packets * 3 bytes/packet = 24 bytes
-            del rawBuffer[:24] # delete what was claimed
+            chunkBytes = rawBuffer[:48] # 8 packets * 6 bytes/packet = 48 bytes
+            del rawBuffer[:48] # delete what was claimed
             activeChunk = build_chunk(chunkBytes)
             chunkIndex = 0
         
