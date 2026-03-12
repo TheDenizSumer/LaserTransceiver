@@ -27,12 +27,12 @@ def transmit_binary_manchester(binary_str):
     # For simplicity, we'll skip to the data, but you can add it here.
 
     for bit in binary_str:
-        if bit == '1':
-            # Bit 1: High for half-bit, then Low for half-bit
+        if bit == '0':
+            # Bit 0: High for half-bit, then Low for half-bit
             pulses.append(pigpio.pulse(1 << GPIO_PIN, 0, HALF_BIT_TIME))
             pulses.append(pigpio.pulse(0, 1 << GPIO_PIN, HALF_BIT_TIME))
-        elif bit == '0':
-            # Bit 0: Low for half-bit, then High for half-bit
+        elif bit == '1':
+            # Bit 1: Low for half-bit, then High for half-bit
             pulses.append(pigpio.pulse(0, 1 << GPIO_PIN, HALF_BIT_TIME))
             pulses.append(pigpio.pulse(1 << GPIO_PIN, 0, HALF_BIT_TIME))
     
