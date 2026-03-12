@@ -14,6 +14,8 @@ TYPE_SB = 1
 TYPE_NEXT = 2 # signal from main that an ack has been recived, and to move on to the next chunk
 TYPE_DATA = 3
 
+pi.set_mode(GPIO_OUT, pigpio.OUTPUT)
+
 async def transmitPacket(packet_data):
 
     # Data bits (LSB first)
