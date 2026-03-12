@@ -19,6 +19,7 @@ async def transmitPacket(packet_data):
     # Data bits (LSB first)
     for i in range(64):
         bit = True if (packet_data >> i) & 1 else False
+        print(bit)
         if bit == 1:
             pi.write(GPIO_OUT, 0)
             await asyncio.sleep(BIT_PERIOD/2)
