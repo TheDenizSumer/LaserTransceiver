@@ -7,12 +7,12 @@ highlight_color = '\033[93m' #yellow - flipped bits
 reset = '\033[0m'
 
 
-def pack(packetType: int, numID: int, data: int) -> bytes:
+def pack(packetType: int, numID: int, data: bytes) -> bytes:
     #if(packetType == 0): #normal data packet
 
     #numID: 3 bits, packetType: 3 bits, 3 bits unused, data: 48 bits
-    msg = packetType << 54 | numID << 51 | data
-    
+    msg = packetType << 54 | numID << 51 | int.from_bytes(data, 'big')
+
     codeword = buildParityWord(msg)
     
     overallParity = 0
@@ -28,9 +28,6 @@ def pack(packetType: int, numID: int, data: int) -> bytes:
 
 def unpack(packet: bytes):
     BigError = False
-    
-    if len(packet) != 8:
-        BigError = True
     
     codeword = int.from_bytes(packet, 'big')
 
@@ -77,7 +74,7 @@ def unpack(packet: bytes):
             msg |= bit_val << data_index
             data_index += 1
      
-    data = msg & 0xFFFFFFFFFFFF
+    data = (msg & 0xFFFFFFFFFFFF).to_bytes(6, byteorder='big')
     unused = (msg >> 48) & 0x7
     numID = (msg >> 51) & 0x7
     packetType = (msg >> 54) & 0x7
