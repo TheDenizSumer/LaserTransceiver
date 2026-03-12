@@ -1,28 +1,87 @@
 import pigpio
-
-pi = pigpio.pi()
 import time
 
-TX_PIN = 11
-bit_time = 10e-6  # seconds
+RX_PIN = 17
+bit_time = 1000          # microseconds
+half_bit = bit_time / 2
 
-pi.set_mode(TX_PIN, pigpio.OUTPUT)
+pi = pigpio.pi()
 
-def send_bit(bit):
-    if bit == 1:
-        pi.write(TX_PIN, 0)
-        time.sleep(bit_time/2)
-        pi.write(TX_PIN, 1)
-        time.sleep(bit_time/2)
-    else:
-        pi.write(TX_PIN, 1)
-        time.sleep(bit_time/2)
-        pi.write(TX_PIN, 0)
-        time.sleep(bit_time/2)
+last_tick = None
+last_level = None
 
-def send_packet(bits):
-    for b in bits:
-        send_bit(b)
+state = "WAIT_EDGE"
+bits = []
 
-packet = [1,0,1,1,0,0,1]
-send_packet(packet)
+def decode_bit(prev, curr):
+    if prev == 0 and curr == 1:
+        return 1
+    if prev == 1 and curr == 0:
+        return 0
+    return None
+
+
+def edge_callback(gpio, level, tick):
+    global last_tick, last_level, state, bits
+
+    if last_tick is None:
+        last_tick = tick
+        last_level = level
+        return
+
+    dt = pigpio.tickDiff(last_tick, tick)
+
+    # frame break
+    if dt > bit_time * 3:
+        if bits:
+            print("Frame:", bits)
+        bits = []
+        state = "WAIT_EDGE"
+        last_tick = tick
+        last_level = level
+        return
+
+    # classify timing
+    short = abs(dt - half_bit) < half_bit * 0.6
+    long = abs(dt - bit_time) < half_bit
+
+    if state == "WAIT_EDGE":
+
+        if short:
+            state = "EXPECT_MID"
+
+        elif long:
+            bit = decode_bit(last_level, level)
+            if bit is not None:
+                bits.append(bit)
+
+    elif state == "EXPECT_MID":
+
+        if short:
+            bit = decode_bit(last_level, level)
+            if bit is not None:
+                bits.append(bit)
+
+            state = "WAIT_EDGE"
+
+        else:
+            # unexpected timing → reset
+            state = "WAIT_EDGE"
+
+    last_tick = tick
+    last_level = level
+
+
+pi.set_mode(RX_PIN, pigpio.INPUT)
+
+cb = pi.callback(RX_PIN, pigpio.EITHER_EDGE, edge_callback)
+
+print("Manchester receiver running...")
+
+try:
+    while True:
+        time.sleep(1)
+
+except KeyboardInterrupt:
+    cb.cancel()
+    pi.stop()
