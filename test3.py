@@ -57,7 +57,6 @@ def transmit_binary_manchester(binary_str):
 
 # --- Main Execution ---
 try:
-    # Example: Send the letter 'A' in binary (01000001)
     my_data = "01000001"
     transmit_binary_manchester(my_data)
     

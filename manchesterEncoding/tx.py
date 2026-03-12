@@ -1,29 +1,58 @@
 import pigpio
-
-pi = pigpio.pi()
 import time
 
-TX_PIN = 27
-bit_time = 1000 #mircoseconds
-bit_time *= 1/1000000 # convert to seconds
+# --- Configuration ---
+GPIO_PIN = 27       # BCM numbering
+BIT_RATE = 1000     # Bits per second (1kbps)
 
-pi.set_mode(TX_PIN, pigpio.OUTPUT)
+HALF_BIT_TIME = int(1000000 / BIT_RATE / 2)
 
-def send_bit(bit):
-    if bit == 1:
-        pi.write(TX_PIN, 0)
-        time.sleep(bit_time/2)
-        pi.write(TX_PIN, 1)
-        time.sleep(bit_time/2)
+pi = pigpio.pi()
+
+if not pi.connected:
+    print("Error: pigpiod daemon is not running. Run 'sudo pigpiod'.")
+    exit()
+
+def transmit_binary_manchester(packet_data):
+    pi.set_mode(GPIO_PIN, pigpio.OUTPUT)
+    pi.wave_clear() 
+    
+    pulses = []
+        # Data bits (LSB first)
+    for i in range(64):
+        bit = True if (packet_data >> i) & 1 else False
+        if bit == 0:
+            # Bit 0: High for half-bit, then Low for half-bit
+            pulses.append(pigpio.pulse(1 << GPIO_PIN, 0, HALF_BIT_TIME))
+            pulses.append(pigpio.pulse(0, 1 << GPIO_PIN, HALF_BIT_TIME))
+        elif bit == 1:
+            # Bit 1: Low for half-bit, then High for half-bit
+            pulses.append(pigpio.pulse(0, 1 << GPIO_PIN, HALF_BIT_TIME))
+            pulses.append(pigpio.pulse(1 << GPIO_PIN, 0, HALF_BIT_TIME))
+    
+    # Load all pulses into the buffer
+    pi.wave_add_generic(pulses)
+    
+    # Create the wave ID
+    wave_id = pi.wave_create()
+    
+    if wave_id >= 0:
+        print(f"Sending: {bin(packet_data)}")
+        pi.wave_send_once(wave_id)
+        
+        # Wait for transmission to finish so the script doesn't close too early
+        while pi.wave_tx_busy():
+            time.sleep(0.01)
+            
+        print("Transmission complete.")
+        pi.wave_delete(wave_id) # Clean up the Wave ID to save memory
     else:
-        pi.write(TX_PIN, 1)
-        time.sleep(bit_time/2)
-        pi.write(TX_PIN, 0)
-        time.sleep(bit_time/2)
+        print("Failed to create waveform. Too many pulses?")
 
-def send_packet(bits):
-    for b in bits:
-        send_bit(b)
-
-packet = [0,1,0,1,1,0,0,1,0,0]
-send_packet(packet)
+# --- Main Execution ---
+try:
+    my_data = 0b01000001
+    transmit_binary_manchester(my_data)
+    
+finally:
+    pi.stop()

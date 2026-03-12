@@ -1,0 +1,29 @@
+import pigpio
+
+pi = pigpio.pi()
+import time
+
+TX_PIN = 27
+bit_time = 1000 #mircoseconds
+bit_time *= 1/1000000 # convert to seconds
+
+pi.set_mode(TX_PIN, pigpio.OUTPUT)
+
+def send_bit(bit):
+    if bit == 1:
+        pi.write(TX_PIN, 0)
+        time.sleep(bit_time/2)
+        pi.write(TX_PIN, 1)
+        time.sleep(bit_time/2)
+    else:
+        pi.write(TX_PIN, 1)
+        time.sleep(bit_time/2)
+        pi.write(TX_PIN, 0)
+        time.sleep(bit_time/2)
+
+def send_packet(bits):
+    for b in bits:
+        send_bit(b)
+
+packet = [0,1,0,1,1,0,0,1,0,0]
+send_packet(packet)
