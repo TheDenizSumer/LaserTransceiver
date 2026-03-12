@@ -77,7 +77,7 @@ def unpack(packet: bytes):
             msg |= bit_val << data_index
             data_index += 1
      
-    data = msg & 0xFFFFFFFFFFFF
+    data = (msg & 0xFFFFFFFFFFFF).to_bytes(6, byteorder='big')
     unused = (msg >> 48) & 0x7
     numID = (msg >> 51) & 0x7
     packetType = (msg >> 54) & 0x7
