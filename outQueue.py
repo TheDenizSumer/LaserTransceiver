@@ -10,27 +10,20 @@ TYPE_NEXT = 2 # signal from main that an ack has been recived, and to move on to
 TYPE_DATA = 3
 
 async def transmitPacket(packet_data):
-    # basically just coppied from manchester.py hopefully it works
-
-    # Start bit
-    pi.write(GPIO_OUT, 0)
-    await asyncio.sleep(BIT_PERIOD)
 
     # Data bits (LSB first)
     for i in range(64):
         bit = True if (packet_data >> i) & 1 else False
-        for x in range(2):  # It takes two clock cycles for every bit for Manchester encoding
-            clock = True if x == 1 else False
-
-            # Manchester Encoding
-            outBit = clock ^ bit
-
-            pi.write(GPIO_OUT, 1 if outBit else 0)
-            await asyncio.sleep(BIT_PERIOD)
-
-    # Stop bit
-    pi.write(GPIO_OUT, 0)
-    await asyncio.sleep(BIT_PERIOD)
+        if bit == 1:
+            pi.write(GPIO_OUT, 0)
+            await asyncio.sleep(BIT_PERIOD/2)
+            pi.write(GPIO_OUT, 1)
+            await asyncio.sleep(BIT_PERIOD/2)
+        else:
+            pi.write(GPIO_OUT, 1)
+            await asyncio.sleep(BIT_PERIOD/2)
+            pi.write(GPIO_OUT, 0)
+            await asyncio.sleep(BIT_PERIOD/2)
 
     # short pause after whole packet to allow receiver to sync
     await asyncio.sleep(0.05)
