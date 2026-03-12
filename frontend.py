@@ -34,14 +34,17 @@ class LaserTransceiverFrontend:
         self.root = tk.Tk()
         self.root.title(title)
         self.root.geometry(f"{window_size[0]}x{window_size[1]}")
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
         # Optional callback invoked when "Send" is pressed.
         self._on_send = on_send
 
-        # Where to read/write binary image data.
+        # Where to read/write binary image data (organized under IO/ by default).
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        self.input_path = os.path.abspath(input_path or os.path.join(base_dir, "input"))
-        self.output_path = os.path.abspath(output_path or os.path.join(base_dir, "output"))
+        io_dir = os.path.join(base_dir, "IO")
+        # Allow custom paths to override, but default to IO/input and IO/output.
+        self.input_path = os.path.abspath(input_path or os.path.join(io_dir, "input"))
+        self.output_path = os.path.abspath(output_path or os.path.join(io_dir, "output"))
         self.poll_input_ms = poll_input_ms
         # Signature used to detect changes in `input` across polls.
         # Use nanosecond timestamps to avoid missing fast successive writes.
@@ -57,6 +60,29 @@ class LaserTransceiverFrontend:
         self._build_ui()
         self._ensure_io_files()
         self._start_input_poll()
+
+    def _on_close(self) -> None:
+        """
+        Clear IO files on exit, per spec, then close the UI.
+        """
+        try:
+            self._clear_io_files()
+        except Exception:
+            # Avoid blocking shutdown due to IO issues.
+            pass
+        self.root.destroy()
+
+    def _clear_io_files(self) -> None:
+        for p in (self.input_path, self.output_path):
+            try:
+                with open(p, "wb") as f:
+                    f.write(b"")
+            except FileNotFoundError:
+                # If deleted, recreate as empty.
+                os.makedirs(os.path.dirname(p), exist_ok=True)
+                with open(p, "wb") as f:
+                    f.write(b"")
+        self._last_input_sig = None
 
     def _ensure_io_files(self) -> None:
         # Ensure both files exist so other scripts can write to them.
@@ -227,6 +253,19 @@ class LaserTransceiverFrontend:
         self._tk_image = ImageTk.PhotoImage(img)
         self.image_label.configure(image=self._tk_image, text="")
 
+    def _show_loading_placeholder(self) -> None:
+        """
+        Show a temporary loading message while `input` is still being written and
+        does not yet contain a full valid image.
+        """
+        self._tk_image = None
+        self._pil_image = None
+        self.image_label.configure(
+            image="",
+            text="Loading image from input...\n(Waiting for complete data.)",
+        )
+        self.status_var.set("Loading image from input (incomplete data).")
+
     def _clear_input_file(self) -> None:
         with open(self.input_path, "wb") as f:
             f.write(b"")
@@ -260,7 +299,13 @@ class LaserTransceiverFrontend:
                 with open(self.input_path, "rb") as f:
                     data = f.read()
                 if data:
-                    self.set_image_bytes(data, name=os.path.basename(self.input_path))
+                    try:
+                        self.set_image_bytes(data, name=os.path.basename(self.input_path))
+                    except Exception:
+                        # Most likely the file is still being written and doesn't yet
+                        # contain a full valid image. Show a loading placeholder and
+                        # wait for the next change.
+                        self._show_loading_placeholder()
                 self._last_input_sig = sig
             elif st.st_size == 0:
                 self._last_input_sig = sig
