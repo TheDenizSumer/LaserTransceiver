@@ -1,6 +1,7 @@
 import asyncio
 
 from PacketConstruction import pack
+from main import GPIO_OUT, BIT_PERIOD, pi
 
 # Type bits, values determine by the protocol designed
 TYPE_ACK = 0
@@ -9,9 +10,22 @@ TYPE_NEXT = 2 # signal from main that an ack has been recived, and to move on to
 TYPE_DATA = 3
 
 async def transmitPacket(packet_data):
-    # needs to be completed
 
-    # time needed to transmit (calculate based on clock speed)
+    # Data bits (LSB first)
+    for i in range(64):
+        bit = True if (packet_data >> i) & 1 else False
+        if bit == 1:
+            pi.write(GPIO_OUT, 0)
+            await asyncio.sleep(BIT_PERIOD/2)
+            pi.write(GPIO_OUT, 1)
+            await asyncio.sleep(BIT_PERIOD/2)
+        else:
+            pi.write(GPIO_OUT, 1)
+            await asyncio.sleep(BIT_PERIOD/2)
+            pi.write(GPIO_OUT, 0)
+            await asyncio.sleep(BIT_PERIOD/2)
+
+    # short pause after whole packet to allow receiver to sync
     await asyncio.sleep(0.05)
 
 def build_chunk(raw_bytes):
