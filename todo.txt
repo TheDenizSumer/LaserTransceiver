@@ -1,0 +1,3 @@
+sudo apt install pigpio python3-pigpio
+sudo pigpiod
+source .venv/bin/activate

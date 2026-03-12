@@ -1,8 +1,11 @@
 import pigpio
 import time
-from main import BIT_RATE, PACKET_BYTE_LENGTH
+#from main import BIT_RATE, PACKET_BYTE_LENGTH
 
-RX_PIN = 24
+BIT_RATE = 1000
+PACKET_BYTE_LENGTH = 1
+
+RX_PIN = 2
 BIT_TIME = 1.0 / BIT_RATE
 
 HALF_BIT = BIT_TIME / 2
@@ -19,16 +22,19 @@ frame_ready = False
 
 
 def edge_callback(gpio, level, tick):
-
+    
     global last_tick, last_level, bit_buffer, frame_ready
+    print(bit_buffer)
 
     if last_tick is None:
         last_tick = tick
         last_level = level
+        print("Returned")
         return
 
     dt = pigpio.tickDiff(last_tick, tick)
-
+    dt /= 1000000
+    print(dt)
     # Detect frame break
     if dt > FRAME_GAP:
         if len(bit_buffer) == FRAME_BITS:
