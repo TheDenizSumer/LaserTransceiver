@@ -33,6 +33,7 @@ def edge_callback(gpio, level, tick):
 
     dt = pigpio.tickDiff(last_tick, tick)
     last_tick = tick
+    print(dt)
     if dt < bit_time*1.5:
         if bits == []:
             bits.append(0)
@@ -48,7 +49,7 @@ def edge_callback(gpio, level, tick):
         alreadyShort = False
         print("Frame:", bits)
         bits = []
-    print(dt)
+    
     # # frame break
     # if dt > bit_time * 3:
     #     if bits:
