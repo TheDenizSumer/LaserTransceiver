@@ -25,11 +25,11 @@ def send_packet(bits):
         pulses = []
 
         if b == 0:
-            pulses.append(pigpio.pulse(1<<GPIO, 0, bit_time/2)) # Pin 17 ON for half bit time
-            pulses.append(pigpio.pulse(0, 1<<GPIO, bit_time/2)) # Pin 17 OFF for half bit time
+            pulses.append(pigpio.pulse(1<<GPIO, 0, int(bit_time/2))) # Pin 17 ON for half bit time
+            pulses.append(pigpio.pulse(0, 1<<GPIO, int(bit_time/2))) # Pin 17 OFF for half bit time
         else:
-            pulses.append(pigpio.pulse(0, 1<<GPIO, bit_time/2)) # Pin 17 OFF for half bit time
-            pulses.append(pigpio.pulse(1<<GPIO, 0, bit_time/2)) # Pin 17 ON for half bit time
+            pulses.append(pigpio.pulse(0, 1<<GPIO, int(bit_time/2))) # Pin 17 OFF for half bit time
+            pulses.append(pigpio.pulse(1<<GPIO, 0, int(bit_time/2))) # Pin 17 ON for half bit time
 
 
     pi.wave_clear()
