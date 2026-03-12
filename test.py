@@ -19,7 +19,7 @@ pi.set_mode(TX_PIN, pigpio.OUTPUT)
 def send_packet(bits):
     for b in bits:
         pi = pigpio.pi()
-        GPIO = 17
+        GPIO = TX_PIN
 
         # 1. Define pulses (on_mask, off_mask, delay)
         pulses = []
