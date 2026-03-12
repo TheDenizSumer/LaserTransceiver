@@ -1,0 +1,58 @@
+import pigpio
+import time
+
+# --- Configuration ---
+GPIO_PIN = 27       # BCM numbering
+BIT_RATE = 1000     # Bits per second (1kbps)
+
+HALF_BIT_TIME = int(1000000 / BIT_RATE / 2)
+
+pi = pigpio.pi()
+
+if not pi.connected:
+    print("Error: pigpiod daemon is not running. Run 'sudo pigpiod'.")
+    exit()
+
+def transmit_binary_manchester(packet_data):
+    pi.set_mode(GPIO_PIN, pigpio.OUTPUT)
+    pi.wave_clear() 
+    
+    pulses = []
+        # Data bits (LSB first)
+    for i in range(64):
+        bit = True if (packet_data >> i) & 1 else False
+        if bit == 0:
+            # Bit 0: High for half-bit, then Low for half-bit
+            pulses.append(pigpio.pulse(1 << GPIO_PIN, 0, HALF_BIT_TIME))
+            pulses.append(pigpio.pulse(0, 1 << GPIO_PIN, HALF_BIT_TIME))
+        elif bit == 1:
+            # Bit 1: Low for half-bit, then High for half-bit
+            pulses.append(pigpio.pulse(0, 1 << GPIO_PIN, HALF_BIT_TIME))
+            pulses.append(pigpio.pulse(1 << GPIO_PIN, 0, HALF_BIT_TIME))
+    
+    # Load all pulses into the buffer
+    pi.wave_add_generic(pulses)
+    
+    # Create the wave ID
+    wave_id = pi.wave_create()
+    
+    if wave_id >= 0:
+        print(f"Sending: {bin(packet_data)}")
+        pi.wave_send_once(wave_id)
+        
+        # Wait for transmission to finish so the script doesn't close too early
+        while pi.wave_tx_busy():
+            time.sleep(0.01)
+            
+        print("Transmission complete.")
+        pi.wave_delete(wave_id) # Clean up the Wave ID to save memory
+    else:
+        print("Failed to create waveform. Too many pulses?")
+
+# --- Main Execution ---
+try:
+    my_data = 0b0111000001100101011011100110100101110011011100000110111101110000
+    transmit_binary_manchester(my_data)
+    
+finally:
+    pi.stop()
