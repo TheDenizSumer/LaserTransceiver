@@ -1,9 +1,14 @@
 import asyncio
 
 from PacketConstruction import pack
-from main import GPIO_OUT, BIT_PERIOD, pi
+import pigpio
+
+pi = pigpio.pi()
 
 # Type bits, values determine by the protocol designed
+bit_time = 1000 # mircoseconds
+BIT_PERIOD = bit_time * 1/1000000 # convert to seconds
+GPIO_OUT = 27
 TYPE_ACK = 0
 TYPE_SB = 1
 TYPE_NEXT = 2 # signal from main that an ack has been recived, and to move on to the next chunk
@@ -26,7 +31,7 @@ async def transmitPacket(packet_data):
             await asyncio.sleep(BIT_PERIOD/2)
 
     # short pause after whole packet to allow receiver to sync
-    await asyncio.sleep(0.05)
+    await asyncio.sleep(BIT_PERIOD*3)
 
 def build_chunk(raw_bytes):
     packets = []
