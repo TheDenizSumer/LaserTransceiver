@@ -29,9 +29,6 @@ def pack(packetType: int, numID: int, data: bytes) -> bytes:
 def unpack(packet: bytes):
     BigError = False
     
-    if len(packet) != 8:
-        BigError = True
-    
     codeword = int.from_bytes(packet, 'big')
 
     overallParity = (codeword >> 63) & 1
