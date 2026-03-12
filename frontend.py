@@ -13,6 +13,7 @@ Key API:
 
 from __future__ import annotations
 
+import io
 import os
 import tkinter as tk
 from tkinter import filedialog, messagebox
@@ -25,6 +26,9 @@ class LaserTransceiverFrontend:
         *,
         title: str = "LaserTransceiver Frontend",
         on_send: Optional[Callable[[], None]] = None,
+        input_path: Optional[str] = None,
+        output_path: Optional[str] = None,
+        poll_input_ms: int = 250,
         window_size: tuple[int, int] = (900, 600),
     ) -> None:
         self.root = tk.Tk()
@@ -34,13 +38,32 @@ class LaserTransceiverFrontend:
         # Optional callback invoked when "Send" is pressed.
         self._on_send = on_send
 
+        # Where to read/write binary image data.
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        self.input_path = os.path.abspath(input_path or os.path.join(base_dir, "input"))
+        self.output_path = os.path.abspath(output_path or os.path.join(base_dir, "output"))
+        self.poll_input_ms = poll_input_ms
+        # Signature used to detect changes in `input` across polls.
+        # Use nanosecond timestamps to avoid missing fast successive writes.
+        self._last_input_sig: tuple[int, int] | None = None  # (mtime_ns, size)
+
         # Keep a reference to the active image object to prevent garbage collection.
         self._tk_image = None
         self._pil_image = None  # original PIL image (if loaded)
         self._image_path: Optional[str] = None
+        self._image_bytes: Optional[bytes] = None
         self._render_after_id: Optional[str] = None
 
         self._build_ui()
+        self._ensure_io_files()
+        self._start_input_poll()
+
+    def _ensure_io_files(self) -> None:
+        # Ensure both files exist so other scripts can write to them.
+        for p in (self.input_path, self.output_path):
+            if not os.path.exists(p):
+                with open(p, "wb") as f:
+                    f.write(b"")
 
     def _build_ui(self) -> None:
         self.root.columnconfigure(0, weight=1)
@@ -96,7 +119,11 @@ class LaserTransceiverFrontend:
             return
 
         try:
+            # Per spec: uploading a new image should NOT display it directly.
+            # It should only write bytes into `input` (truncate first). The poller
+            # is the ONLY thing that updates the image display.
             self.set_image(file_path)
+            self.status_var.set(f"Wrote {os.path.basename(self.input_path)} from upload ({os.path.getsize(self.input_path)} bytes)")
         except Exception as e:
             messagebox.showerror("Unable to load image", f"{e}")
 
@@ -105,16 +132,22 @@ class LaserTransceiverFrontend:
         Stub hook for future wiring.
         Replace `on_send` when constructing this class, or edit this method.
         """
-        if self._on_send is not None:
-            self._on_send()
+        # Always write the current image bytes to the output file (binary), per spec.
+        try:
+            self._write_output_file()
+        except Exception as e:
+            messagebox.showerror("Send failed", f"{e}")
             return
 
-        # Default behavior for now: a no-op with a simple notification.
-        messagebox.showinfo("Send", "Send clicked (stub). Hook this up to your transmit logic later.")
+        # Optional extra callback for future wiring (laser TX, etc).
+        if self._on_send is not None:
+            self._on_send()
+
+        self.status_var.set(f"Wrote {os.path.basename(self.output_path)} ({os.path.getsize(self.output_path)} bytes)")
 
     def set_image(self, file_path: str) -> None:
         """
-        Display an image in the UI.
+        Write an image into the `input` file (binary).
 
         This function is intended to be called:
         - by the Upload button after selecting a local image
@@ -124,30 +157,35 @@ class LaserTransceiverFrontend:
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File not found: {file_path}")
 
-        # Prefer Pillow for reliable cross-platform image decoding (JPG/PNG/WebP/etc).
-        try:
-            from PIL import Image, ImageOps, ImageTk  # type: ignore
+        # IMPORTANT: Do NOT render the image directly here.
+        # The image display should only ever reflect the contents of `input`.
+        # We therefore just copy bytes into `input` and let the poller decode+render.
+        with open(file_path, "rb") as f:
+            data = f.read()
+        self._write_input_file(data)
 
-            self._image_path = file_path
-            # Auto-orient based on EXIF (common for phone photos that appear rotated).
-            self._pil_image = ImageOps.exif_transpose(Image.open(file_path))
-            self._render_image()  # will size to the current widget dimensions
-            try:
-                w, h = self._pil_image.size
-                self.status_var.set(f"Loaded: {os.path.basename(file_path)} ({w}x{h})")
-            except Exception:
-                self.status_var.set(f"Loaded: {os.path.basename(file_path)}")
+    def set_image_bytes(self, image_bytes: bytes, *, name: str = "input") -> None:
+        """
+        Display an image from raw bytes (intended for `input` file contents).
+        """
+        if not image_bytes:
             return
-        except ModuleNotFoundError:
-            # Without Pillow, tkinter's PhotoImage support varies by platform/Tk version.
-            # Many installs (including macOS Tk 8.5) cannot display JPG or PNG reliably.
-            raise RuntimeError(
-                "This UI requires Pillow to display most common image formats (JPG/PNG/WebP).\n\n"
-                "Install it with one of:\n"
-                "  - python3 -m pip install pillow\n"
-                "  - (Raspberry Pi / Debian) sudo apt-get install -y python3-pil python3-pil.imagetk\n\n"
-                "Or use a GIF/PPM/PGM image that tkinter can load without Pillow."
-            )
+
+        try:
+            from PIL import Image, ImageOps  # type: ignore
+        except ModuleNotFoundError as e:
+            raise RuntimeError("Pillow is required to decode image bytes.") from e
+
+        self._image_path = None
+        self._image_bytes = image_bytes
+        img = Image.open(io.BytesIO(image_bytes))
+        self._pil_image = ImageOps.exif_transpose(img)
+        self._render_image()
+        try:
+            w, h = self._pil_image.size
+            self.status_var.set(f"Loaded from {name} ({w}x{h})")
+        except Exception:
+            self.status_var.set(f"Loaded from {name}")
 
     def _on_image_frame_configure(self, _event) -> None:
         # Throttle re-rendering during rapid resizes.
@@ -188,6 +226,52 @@ class LaserTransceiverFrontend:
         img.thumbnail((target_w, target_h))
         self._tk_image = ImageTk.PhotoImage(img)
         self.image_label.configure(image=self._tk_image, text="")
+
+    def _clear_input_file(self) -> None:
+        with open(self.input_path, "wb") as f:
+            f.write(b"")
+        # Reset signature so future writes are detected.
+        self._last_input_sig = None
+
+    def _write_input_file(self, image_bytes: bytes) -> None:
+        # Per spec: overwrite/clear first, then write bytes.
+        self._clear_input_file()
+        with open(self.input_path, "wb") as f:
+            f.write(image_bytes or b"")
+
+    def _write_output_file(self) -> None:
+        if not self._image_bytes:
+            raise RuntimeError("No image loaded yet.")
+        with open(self.output_path, "wb") as f:
+            f.write(self._image_bytes)
+
+    def _start_input_poll(self) -> None:
+        self.root.after(self.poll_input_ms, self._poll_input_file)
+
+    def _poll_input_file(self) -> None:
+        """
+        Poll `input` for binary image data. If non-empty and changed, decode & display.
+        """
+        try:
+            st = os.stat(self.input_path)
+            sig = (st.st_mtime_ns, st.st_size)
+
+            if st.st_size > 0 and sig != self._last_input_sig:
+                with open(self.input_path, "rb") as f:
+                    data = f.read()
+                if data:
+                    self.set_image_bytes(data, name=os.path.basename(self.input_path))
+                self._last_input_sig = sig
+            elif st.st_size == 0:
+                self._last_input_sig = sig
+        except FileNotFoundError:
+            # Recreate if deleted.
+            self._ensure_io_files()
+        except Exception as e:
+            # Don’t spam popups; just update status.
+            self.status_var.set(f"Input read error: {e}")
+        finally:
+            self.root.after(self.poll_input_ms, self._poll_input_file)
 
     def run(self) -> None:
         self.root.mainloop()
