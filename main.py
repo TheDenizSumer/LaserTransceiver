@@ -72,7 +72,10 @@ def receiver():
                 alreadyShort = True
         elif dt < local_bit_time * 1.2:
             alreadyShort = False
-            bits.append(bits[-1] ^ 1)
+            if not bits:              # Check if the list is empty
+                bits.append(0)        # Initialize the list with a starting bit
+            else:
+                bits.append(bits[-1] ^ 1)
         else:
             alreadyShort = False
             if bits:
