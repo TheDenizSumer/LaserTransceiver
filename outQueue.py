@@ -1,7 +1,7 @@
 import asyncio
 
 from PacketConstruction import pack
-from manchester import GPIO, GPIO_PIN, BIT_PERIOD
+from main import GPIO_OUT, BIT_PERIOD, pi
 
 # Type bits, values determine by the protocol designed
 TYPE_ACK = 0
@@ -13,7 +13,7 @@ async def transmitPacket(packet_data):
     # basically just coppied from manchester.py hopefully it works
 
     # Start bit
-    GPIO.output(GPIO_PIN, GPIO.LOW)
+    pi.write(GPIO_OUT, 0)
     await asyncio.sleep(BIT_PERIOD)
 
     # Data bits (LSB first)
@@ -25,11 +25,11 @@ async def transmitPacket(packet_data):
             # Manchester Encoding
             outBit = clock ^ bit
 
-            GPIO.output(GPIO_PIN, GPIO.HIGH if outBit else GPIO.LOW)
+            pi.write(GPIO_OUT, 1 if outBit else 0)
             await asyncio.sleep(BIT_PERIOD)
 
     # Stop bit
-    GPIO.output(GPIO_PIN, GPIO.LOW)
+    pi.write(GPIO_OUT, 0)
     await asyncio.sleep(BIT_PERIOD)
 
     # short pause after whole packet to allow receiver to sync
