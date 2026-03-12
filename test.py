@@ -10,7 +10,7 @@ import time
 
 TX_PIN = 27
 bit_time = 1000 #mircoseconds
-BIT_PERIOD *= 1/1000000 # convert to seconds
+BIT_PERIOD = bit_time * 1/1000000 # convert to seconds
 
 pi.set_mode(TX_PIN, pigpio.OUTPUT)
 
