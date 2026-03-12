@@ -51,7 +51,7 @@ def transmit_binary_manchester(packet_data):
 
 # --- Main Execution ---
 try:
-    my_data = 0b01000001
+    my_data = 0b010000010
     transmit_binary_manchester(my_data)
     
 finally:
