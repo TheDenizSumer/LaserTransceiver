@@ -80,7 +80,9 @@ def receiver():
             alreadyShort = False
             if bits:
                 try:
-                    packet = int("".join(map(str, bits)), 2)
+                    # FIX: Reverse the bits since they were transmitted LSB first!
+                    # Also, limit to 64 bits in case noise added an extra edge.
+                    packet = int("".join(map(str, reversed(bits[:64]))), 2)
                     incoming_packets.put(packet)
                 except ValueError:
                     pass
