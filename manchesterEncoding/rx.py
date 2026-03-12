@@ -13,12 +13,12 @@ last_level = None
 state = "WAIT_EDGE"
 bits = []
 
-def decode_bit(prev, curr):
-    if prev == 0 and curr == 1:
-        return 1
-    if prev == 1 and curr == 0:
-        return 0
-    return None
+# def decode_bit(prev, curr):
+#     if prev == 0 and curr == 1:
+#         return 1
+#     if prev == 1 and curr == 0:
+#         return 0
+#     return None
 
 
 def edge_callback(gpio, level, tick):
@@ -27,10 +27,18 @@ def edge_callback(gpio, level, tick):
     if last_tick is None:
         last_tick = tick
         last_level = level
+        bits.append(0)
         return
 
     dt = pigpio.tickDiff(last_tick, tick)
     last_tick = tick
+    if dt < bit_time*1.5:
+        bits.append(bits[-1])
+    elif dt < bit_time*2.5:
+        bits.append(bits[-1] ^ 1)
+    else:
+        print("Frame:", bits)
+        bits = []
     print(dt)
     # # frame break
     # if dt > bit_time * 3:
