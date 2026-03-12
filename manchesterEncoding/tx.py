@@ -3,7 +3,7 @@ import pigpio
 pi = pigpio.pi()
 import time
 
-TX_PIN = 18
+TX_PIN = 11
 bit_time = 10e-6  # seconds
 
 pi.set_mode(TX_PIN, pigpio.OUTPUT)

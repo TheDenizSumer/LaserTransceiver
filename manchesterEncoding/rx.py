@@ -1,7 +1,7 @@
 import pigpio
 import time
 
-RX_PIN = 23
+RX_PIN = 13
 bit_time = 10          # microseconds
 half_bit = bit_time / 2
 
