@@ -6,7 +6,7 @@ import pigpio
 pi = pigpio.pi()
 
 # Type bits, values determine by the protocol designed
-bit_time = 1000 # mircoseconds
+bit_time = 500 # mircoseconds
 BIT_PERIOD = bit_time * 1/1000000 # convert to seconds
 GPIO_OUT = 27
 TYPE_ACK = 0
