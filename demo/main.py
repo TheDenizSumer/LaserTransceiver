@@ -253,9 +253,14 @@ class LaserFileTransferApp:
             print(f"[main] Send error: {e}")
 
     def _start_link_and_threads(self):
-        from laser_link import LaserLink
+        from laser_link import LaserLink, LaserLinkConfig
 
-        self._link = LaserLink()
+        # Set RX_INVERTED=1 if photodiode outputs LOW when laser is ON
+        rx_inverted = os.environ.get("RX_INVERTED", "").strip() in ("1", "true", "yes")
+        if rx_inverted:
+            print("[main] RX inverted mode (photodiode LOW = light)")
+        config = LaserLinkConfig(rx_inverted=rx_inverted)
+        self._link = LaserLink(config=config)
         self._tx_thread = threading.Thread(target=self._sender_loop, daemon=True)
         self._rx_thread = threading.Thread(target=self._receiver_loop, daemon=True)
         self._tx_thread.start()

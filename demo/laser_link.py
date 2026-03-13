@@ -15,7 +15,7 @@ from typing import Optional, Tuple
 GPIO_TX_PIN = 27  # Laser output
 GPIO_RX_PIN = 17  # Photodiode input
 
-BIT_PERIOD_S = 0.001  # 1 kbit/s; tune for your photodiode circuit
+BIT_PERIOD_S = 0.002  # 500 bit/s; slower = more reliable for photodiode circuits
 SOF_DATA = 0xA1
 SOF_ACK = 0xA2
 MAX_PAYLOAD = 64
@@ -61,6 +61,7 @@ class LaserLinkConfig:
     tx_pin: int = GPIO_TX_PIN
     rx_pin: int = GPIO_RX_PIN
     bit_period_s: float = BIT_PERIOD_S
+    rx_inverted: bool = False  # True if photodiode outputs LOW when laser ON
 
 
 class LaserLink:
@@ -76,7 +77,8 @@ class LaserLink:
         time.sleep(self.config.bit_period_s)
 
     def _read_pin(self) -> int:
-        return GPIO.input(self.config.rx_pin)
+        raw = GPIO.input(self.config.rx_pin)
+        return (1 - raw) if self.config.rx_inverted else raw
 
     def _send_byte(self, value: int) -> None:
         value &= 0xFF
