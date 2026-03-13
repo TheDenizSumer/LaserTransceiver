@@ -1,0 +1,2 @@
+RPi.GPIO>=0.7.0; platform_system=="Linux"
+Pillow>=10.0.0
