@@ -6,11 +6,9 @@ import queue
 TX_PIN = 27
 RX_PIN = 17
 
-BIT_TIME = 0.002   # 2ms per bit = 500 baud
-SAMPLE_OFFSET = BIT_TIME / 2
+BIT_TIME = 0.003   # 3 ms per bit (~333 baud)
 
 pi = pigpio.pi()
-
 if not pi.connected:
     print("pigpio daemon not running")
     exit()
@@ -21,9 +19,9 @@ pi.set_mode(RX_PIN, pigpio.INPUT)
 tx_queue = queue.Queue()
 
 
-# -----------------------------
-# TRANSMIT BYTE
-# -----------------------------
+# -------------------
+# TRANSMIT
+# -------------------
 def transmit_byte(byte):
 
     frame = []
@@ -40,13 +38,9 @@ def transmit_byte(byte):
         time.sleep(BIT_TIME)
 
 
-# -----------------------------
-# TRANSMIT THREAD
-# -----------------------------
 def tx_loop():
 
     while True:
-
         msg = tx_queue.get()
 
         for c in msg:
@@ -55,58 +49,60 @@ def tx_loop():
         transmit_byte(ord("\n"))
 
 
-# -----------------------------
-# RECEIVE THREAD
-# -----------------------------
+# -------------------
+# RECEIVE
+# -------------------
 def rx_loop():
+
+    last_state = 0
 
     while True:
 
-        # wait for start bit
-        if pi.read(RX_PIN) == 1:
+        state = pi.read(RX_PIN)
 
-            time.sleep(SAMPLE_OFFSET)
+        # detect rising edge (start bit)
+        if state == 1 and last_state == 0:
+
+            # move to middle of first data bit
+            time.sleep(BIT_TIME * 1.5)
 
             bits = []
 
-            for i in range(8):
-                time.sleep(BIT_TIME)
+            for _ in range(8):
                 bits.append(pi.read(RX_PIN))
+                time.sleep(BIT_TIME)
 
-            # stop bit
+            # ignore stop bit
             time.sleep(BIT_TIME)
 
             value = 0
             for i,b in enumerate(bits):
                 value |= (b << i)
 
-            char = chr(value)
-
-            print(char, end="", flush=True)
-
-            # wait for line to drop
-            while pi.read(RX_PIN) == 1:
+            try:
+                print(chr(value), end="", flush=True)
+            except:
                 pass
 
+        last_state = state
 
-# -----------------------------
-# USER INPUT THREAD
-# -----------------------------
+
+# -------------------
+# USER INPUT
+# -------------------
 def input_loop():
 
     while True:
-
         msg = input("TX> ")
         tx_queue.put(msg)
 
 
-# -----------------------------
+# -------------------
 # START THREADS
-# -----------------------------
+# -------------------
 threading.Thread(target=tx_loop, daemon=True).start()
 threading.Thread(target=rx_loop, daemon=True).start()
 threading.Thread(target=input_loop, daemon=True).start()
-
 
 while True:
     time.sleep(1)
