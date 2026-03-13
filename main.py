@@ -62,30 +62,36 @@ def receiver():
 
         dt = pigpio.tickDiff(last_tick, tick)
         last_tick = tick
+        
         if dt < local_half_bit * 1.2:
-            if bits == []:
+            if not bits:
                 bits.append(0)
             elif alreadyShort:
                 alreadyShort = False
                 bits.append(bits[-1])
             else:
                 alreadyShort = True
+                
         elif dt < local_bit_time * 1.2:
             alreadyShort = False
-            if not bits:              # Check if the list is empty
-                bits.append(0)        # Initialize the list with a starting bit
+            # FIX 1: Prevent IndexError if the first detected edge is a long gap
+            if not bits:
+                bits.append(0) 
             else:
                 bits.append(bits[-1] ^ 1)
+                
         else:
             alreadyShort = False
             if bits:
-                try:
-                    # FIX: Reverse the bits since they were transmitted LSB first!
-                    # Also, limit to 64 bits in case noise added an extra edge.
-                    packet = int("".join(map(str, reversed(bits[:64]))), 2)
-                    incoming_packets.put(packet)
-                except ValueError:
-                    pass
+                # FIX 2: Only process if we have roughly a full packet to avoid garbage noise
+                if len(bits) >= 64:
+                    try:
+                        # FIX 3: Reverse the bits! The transmitter sends LSB first.
+                        packet = int("".join(map(str, reversed(bits[:64]))), 2)
+                        incoming_packets.put(packet)
+                    except ValueError:
+                        pass
+            # Reset for the next packet
             bits = []
 
     rx_pi.set_mode(RX_PIN, pigpio.INPUT)
