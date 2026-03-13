@@ -210,6 +210,19 @@ async def getPacket():
         )
         packetType, numID, data, BigError = unpack(packet_bytes)
 
+        # --- FIX: Handle Manchester Polarity Inversion ---
+        # If the receiver triggered on the wrong edge, every bit is flipped.
+        if BigError or packetType not in (TYPE_ACK, TYPE_SB, TYPE_DATA):
+            # Try flipping all 64 bits to see if it repairs the packet
+            inverted_packet_int = (~packet_int) & 0xFFFFFFFFFFFFFFFF
+            inverted_bytes = inverted_packet_int.to_bytes(8, byteorder="big")
+            inv_pType, inv_numID, inv_data, inv_BigError = unpack(inverted_bytes)
+            
+            # If the inverted version resolves the error, accept it!
+            if not inv_BigError and inv_pType in (TYPE_ACK, TYPE_SB, TYPE_DATA):
+                packetType, numID, data, BigError = inv_pType, inv_numID, inv_data, inv_BigError
+        # ------------------------------------------------
+
         if BigError:
             print(f"[RX] Discarding packet with uncorrectable error (type={packetType}, id={numID})")
             continue
