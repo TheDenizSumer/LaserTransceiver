@@ -50,6 +50,7 @@ def transmit_binary_manchester(packet_data):
         print("Failed to create waveform. Too many pulses?")
 
 # --- Main Execution ---
+
 try:
     my_data = 0b0111000001100101011011100110100101110011011100000110111101110000
     transmit_binary_manchester(my_data)
