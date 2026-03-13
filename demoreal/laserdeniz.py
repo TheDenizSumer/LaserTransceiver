@@ -5,7 +5,7 @@ import threading
 # Configuration
 TX_PIN = 27
 RX_PIN = 17
-BAUD_RATE = 2000
+BAUD_RATE = 500
 BIT_TIME = 1.0 / BAUD_RATE
 
 # Initialize pigpio
