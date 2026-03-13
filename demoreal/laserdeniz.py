@@ -1,108 +1,95 @@
 import pigpio
 import time
 import threading
-import queue
+import sys
 
 TX_PIN = 27
 RX_PIN = 17
 
-BIT_TIME = 0.003   # 3 ms per bit (~333 baud)
+BIT_TIME = 0.02   # seconds per bit (~50 baud demo)
 
 pi = pigpio.pi()
+
 if not pi.connected:
     print("pigpio daemon not running")
-    exit()
+    sys.exit()
 
 pi.set_mode(TX_PIN, pigpio.OUTPUT)
 pi.set_mode(RX_PIN, pigpio.INPUT)
 
-tx_queue = queue.Queue()
+pi.write(TX_PIN, 0)
 
+############################################
+# TRANSMITTER
+############################################
 
-# -------------------
-# TRANSMIT
-# -------------------
-def transmit_byte(byte):
+def send_bit(bit):
+    pi.write(TX_PIN, bit)
+    time.sleep(BIT_TIME)
 
-    frame = []
+def send_byte(byte):
 
-    frame.append(1)  # start bit
+    # start bit
+    send_bit(1)
 
     for i in range(8):
-        frame.append((byte >> i) & 1)
+        send_bit((byte >> i) & 1)
 
-    frame.append(0)  # stop bit
+    # stop bit
+    send_bit(0)
 
-    for bit in frame:
-        pi.write(TX_PIN, bit)
+def send_text(text):
+
+    for c in text:
+        send_byte(ord(c))
+
+############################################
+# RECEIVER
+############################################
+
+def read_bit():
+    time.sleep(BIT_TIME)
+    return pi.read(RX_PIN)
+
+def receive_loop():
+
+    while True:
+
+        # wait for start bit
+        while pi.read(RX_PIN) == 0:
+            time.sleep(BIT_TIME / 4)
+
+        # align to middle of first data bit
         time.sleep(BIT_TIME)
 
+        byte = 0
 
-def tx_loop():
+        for i in range(8):
+            bit = read_bit()
+            byte |= (bit << i)
 
-    while True:
-        msg = tx_queue.get()
+        # stop bit
+        time.sleep(BIT_TIME)
 
-        for c in msg:
-            transmit_byte(ord(c))
-
-        transmit_byte(ord("\n"))
-
-
-# -------------------
-# RECEIVE
-# -------------------
-def rx_loop():
-
-    last_state = 0
-
-    while True:
-
-        state = pi.read(RX_PIN)
-
-        # detect rising edge (start bit)
-        if state == 1 and last_state == 0:
-
-            # move to middle of first data bit
-            time.sleep(BIT_TIME * 1.5)
-
-            bits = []
-
-            for _ in range(8):
-                bits.append(pi.read(RX_PIN))
-                time.sleep(BIT_TIME)
-
-            # ignore stop bit
-            time.sleep(BIT_TIME)
-
-            value = 0
-            for i,b in enumerate(bits):
-                value |= (b << i)
-
-            try:
-                print(chr(value), end="", flush=True)
-            except:
-                pass
-
-        last_state = state
+        try:
+            print(chr(byte), end='', flush=True)
+        except:
+            pass
 
 
-# -------------------
-# USER INPUT
-# -------------------
+############################################
+# THREADS
+############################################
+
 def input_loop():
 
     while True:
-        msg = input("TX> ")
-        tx_queue.put(msg)
+        msg = input("\nSend: ")
+        send_text(msg + "\n")
 
 
-# -------------------
-# START THREADS
-# -------------------
-threading.Thread(target=tx_loop, daemon=True).start()
-threading.Thread(target=rx_loop, daemon=True).start()
-threading.Thread(target=input_loop, daemon=True).start()
+rx_thread = threading.Thread(target=receive_loop)
+rx_thread.daemon = True
+rx_thread.start()
 
-while True:
-    time.sleep(1)
+input_loop()
