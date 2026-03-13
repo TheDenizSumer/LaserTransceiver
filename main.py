@@ -46,7 +46,7 @@ def receiver():
 
     rx_pi = pigpio.pi()
     if not rx_pi.connected:
-        print("Receiver: pigpiod not running.")
+        print("[RX Hardware] Error: pigpiod not running.")
         return
 
     last_tick = None
@@ -74,7 +74,6 @@ def receiver():
                 
         elif dt < local_bit_time * 1.2:
             alreadyShort = False
-            # FIX 1: Prevent IndexError if the first detected edge is a long gap
             if not bits:
                 bits.append(0) 
             else:
@@ -83,14 +82,19 @@ def receiver():
         else:
             alreadyShort = False
             if bits:
-                # FIX 2: Only process if we have roughly a full packet to avoid garbage noise
+                # ERROR LOGGING ADDED HERE:
                 if len(bits) >= 64:
+                    print(f"[RX Hardware] Success: Captured full frame of {len(bits)} bits.")
                     try:
-                        # FIX 3: Reverse the bits! The transmitter sends LSB first.
                         packet = int("".join(map(str, reversed(bits[:64]))), 2)
                         incoming_packets.put(packet)
-                    except ValueError:
-                        pass
+                    except ValueError as e:
+                        print(f"[RX Hardware] Decode Error: {e}")
+                elif len(bits) > 8:
+                    # Log partial frames so we know if the signal is breaking mid-transmission
+                    # (We ignore lengths <= 8 to avoid flooding the terminal with room noise)
+                    print(f"[RX Hardware] Dropped partial frame: Got {len(bits)}/64 bits (Broke on dt={dt}µs)")
+            
             # Reset for the next packet
             bits = []
 
