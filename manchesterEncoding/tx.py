@@ -15,7 +15,7 @@ if not pi.connected:
 
 def transmit_binary_manchester(packet_data):
     packet_data = "".join(map(str, packet_data))
-    print("Before:", packet_data)
+    #print("Before:", packet_data)
     add_start = "000101" + packet_data
     add_end = add_start + "101000"
     
@@ -58,21 +58,14 @@ def transmit_binary_manchester(packet_data):
 
 # --- Main Execution ---
 
-UserInput = input("Send Message > ")
-from bin2text import text_to_bits
-bitsIn = text_to_bits(UserInput)
+while True:
+    UserInput = input("Send Message > ")
+    from bin2text import text_to_bits
+    bitsIn = text_to_bits(UserInput)
 
-"""bits_val = 0
-for bit in bitsIn:
-    # Shift existing bits left by 1, then OR with the new bit
-    bits_val = (bits_val << 1) | bit
-
-#bits_val |= (1 << bits_val.bit_length())
-print(bits_val)"""
-try:
-    # my_data = 0b111000001100101011011100110100101110011011100000110111101110000
-
-    transmit_binary_manchester(bitsIn) # as string
-    
-finally:
-    pi.stop()
+    try:
+        # my_data = 0b111000001100101011011100110100101110011011100000110111101110000
+        transmit_binary_manchester(bitsIn) # as string
+        
+    finally:
+        pi.stop()

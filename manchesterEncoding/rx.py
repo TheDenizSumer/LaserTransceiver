@@ -48,7 +48,7 @@ def edge_callback(gpio, level, tick):
         bits.append(bits[-1] ^ 1)
     else:
         alreadyShort = False
-        print("Raw:", bits)
+        #print("Raw:", bits)
         bits.reverse()
         count = 0
         for i in range(len(bits)-1, 0, -1):
@@ -62,7 +62,7 @@ def edge_callback(gpio, level, tick):
             if count == 2:
                 bits = bits[i+1:]
                 break
-        print("Parsed:", bits)
+        #print("Parsed:", bits)
         for b in bits:
             print(b, end="")
         print()
