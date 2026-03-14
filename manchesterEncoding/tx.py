@@ -63,18 +63,20 @@ def transmit_binary_manchester(packet_data):
 
 # --- Main Execution ---
 
+UserInput = input("Send Message > ")
+from bin2text import text_to_bits
+bitsIn = text_to_bits(UserInput)
+
+bits_val = 0
+for bit in bitsIn:
+    # Shift existing bits left by 1, then OR with the new bit
+    bits_val = (bits_val << 1) | bit
+
+bits_val |= (1 << bits_val.bit_length())
+
 try:
     # my_data = 0b111000001100101011011100110100101110011011100000110111101110000
-    UserInput = input("Send Message > ")
-    from bin2text import text_to_bits
-    bitsIn = text_to_bits(UserInput)
 
-    bits_val = 0
-    for bit in bitsIn:
-        # Shift existing bits left by 1, then OR with the new bit
-        bits_val = (bits_val << 1) | bit
-
-    bits_val |= (1 << bits_val.bit_length())
     transmit_binary_manchester(bits_val)
     
 finally:
