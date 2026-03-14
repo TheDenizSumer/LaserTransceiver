@@ -18,7 +18,7 @@ def bits_to_text(bits):
     return "".join(chars)
 
 # --- Quick Test ---
-msg = "Hello"
+'''msg = "Hello"
 string = "100001100101011011000110110001101111"
 string = "0100" + string
 bits = [int(b) for b in string]
@@ -33,4 +33,4 @@ decoded = bits_to_text(bits)
 
 print(f"Text:    {msg}")
 print(f"Bits:    {bits}")
-print(f"Decoded: {decoded}")
+print(f"Decoded: {decoded}")'''

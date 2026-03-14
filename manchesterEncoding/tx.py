@@ -14,6 +14,7 @@ if not pi.connected:
     exit()
 
 def transmit_binary_manchester(packet_data):
+    packet_data = "".join(map(str, packet_data))
     print("Before:", packet_data)
     add_start = "000101" + packet_data
     add_end = add_start + "101000"
