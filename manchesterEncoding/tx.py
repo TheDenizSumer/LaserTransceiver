@@ -14,12 +14,24 @@ if not pi.connected:
     exit()
 
 def transmit_binary_manchester(packet_data):
+    length = packet_data.bit_length() - 1
+    bit_string = bin(my_data)[3:]
+
+    new_data = int(bit_string, 2)
+
+    b_str = bin(new_data)[2:]
+
+    add_start = "0" + b_str
+    add_end = add_start + "0"
+
+    packet_data = int(add_end, 2)
+    length = packet_data.bit_length()
     pi.set_mode(GPIO_PIN, pigpio.OUTPUT)
     pi.wave_clear() 
     
     pulses = []
         # Data bits (LSB first)
-    for i in range(len(packet_data)):
+    for i in range(length):
         bit = True if (packet_data >> i) & 1 else False
         if bit == 0:
             # Bit 0: High for half-bit, then Low for half-bit
@@ -52,7 +64,10 @@ def transmit_binary_manchester(packet_data):
 # --- Main Execution ---
 
 try:
-    my_data = 0b0111000001100101011011100110100101110011011100000110111101110000
+    my_data = 0b111000001100101011011100110100101110011011100000110111101110000
+
+    my_data |= (1 << my_data.bit_length())
+
     transmit_binary_manchester(my_data)
     
 finally:
