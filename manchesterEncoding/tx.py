@@ -58,14 +58,13 @@ def transmit_binary_manchester(packet_data):
 
 # --- Main Execution ---
 
-while True:
-    UserInput = input("Send Message > ")
-    from bin2text import text_to_bits
-    bitsIn = text_to_bits(UserInput)
+UserInput = input("Send Message > ")
+from bin2text import text_to_bits
+bitsIn = text_to_bits(UserInput)
 
-    try:
-        # my_data = 0b111000001100101011011100110100101110011011100000110111101110000
-        transmit_binary_manchester(bitsIn) # as string
-        
-    finally:
-        pi.stop()
+try:
+    # my_data = 0b111000001100101011011100110100101110011011100000110111101110000
+    transmit_binary_manchester(bitsIn) # as string
+    
+finally:
+    pi.stop()
