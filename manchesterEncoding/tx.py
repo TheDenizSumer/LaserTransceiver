@@ -49,7 +49,7 @@ def transmit_binary_manchester(packet_data):
     wave_id = pi.wave_create()
     
     if wave_id >= 0:
-        print(f"Sending: {bin(packet_data)}")
+        print(f"Sending: {bin()}")
         pi.wave_send_once(wave_id)
         
         # Wait for transmission to finish so the script doesn't close too early

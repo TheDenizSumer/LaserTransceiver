@@ -62,7 +62,7 @@ def edge_callback(gpio, level, tick):
             if count == 2:
                 bits = bits[i+1:]
                 break
-        print("Parsed:", "".join(bits))
+        print("Parsed:", bits)
         bits = []
     
     # # frame break
