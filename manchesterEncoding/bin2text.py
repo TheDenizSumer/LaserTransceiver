@@ -17,11 +17,11 @@ def bits_to_text(bits):
         
     return "".join(chars)
 
-# --- Quick Test ---
+'''# --- Quick Test ---
 msg = "Hello!"
 bit_list = text_to_bits(msg)
 decoded = bits_to_text(bit_list)
 
 print(f"Text:    {msg}")
 print(f"Bits:    {bit_list}")
-print(f"Decoded: {decoded}")
+print(f"Decoded: {decoded}")'''

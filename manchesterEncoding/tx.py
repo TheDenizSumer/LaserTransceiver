@@ -73,7 +73,7 @@ for bit in bitsIn:
     bits_val = (bits_val << 1) | bit
 
 bits_val |= (1 << bits_val.bit_length())
-
+print(bits_val)
 try:
     # my_data = 0b111000001100101011011100110100101110011011100000110111101110000
 
