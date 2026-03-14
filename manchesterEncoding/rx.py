@@ -48,7 +48,21 @@ def edge_callback(gpio, level, tick):
         bits.append(bits[-1] ^ 1)
     else:
         alreadyShort = False
-        print("Frame:", bits)
+        print("Raw:", bits)
+        bits.reverse()
+        count = 0
+        for i in range(len(bits)-1, 0, -1):
+            count += bits[i]
+            if count == 2:
+                bits = bits[:i]
+                break
+        count = 0
+        for i in range(0, len(bits)):
+            count += bits[i]
+            if count == 2:
+                bits = bits[i+1:]
+                break
+        print("Parsed:", "".join(bits))
         bits = []
     
     # # frame break
