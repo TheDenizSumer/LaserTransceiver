@@ -19,7 +19,7 @@ def transmit_binary_manchester(packet_data):
     
     pulses = []
         # Data bits (LSB first)
-    for i in range(64):
+    for i in range(len(packet_data)):
         bit = True if (packet_data >> i) & 1 else False
         if bit == 0:
             # Bit 0: High for half-bit, then Low for half-bit
