@@ -15,7 +15,7 @@ if not pi.connected:
 
 def transmit_binary_manchester(packet_data):
     length = packet_data.bit_length() - 1
-    bit_string = bin(my_data)[3:]
+    bit_string = bin(packet_data)[3:]
 
     new_data = int(bit_string, 2)
 
@@ -64,11 +64,18 @@ def transmit_binary_manchester(packet_data):
 # --- Main Execution ---
 
 try:
-    my_data = 0b111000001100101011011100110100101110011011100000110111101110000
+    # my_data = 0b111000001100101011011100110100101110011011100000110111101110000
+    UserInput = input("Send Message > ")
+    from bin2text import text_to_bits
+    bitsIn = text_to_bits(UserInput)
 
-    my_data |= (1 << my_data.bit_length())
+    bits_val = 0
+    for bit in bitsIn:
+        # Shift existing bits left by 1, then OR with the new bit
+        bits_val = (bits_val << 1) | bit
 
-    transmit_binary_manchester(my_data)
+    bits_val |= (1 << bits_val.bit_length())
+    transmit_binary_manchester(bits_val)
     
 finally:
     pi.stop()

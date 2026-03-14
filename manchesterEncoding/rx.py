@@ -63,6 +63,10 @@ def edge_callback(gpio, level, tick):
                 bits = bits[i+1:]
                 break
         print("Parsed:", bits)
+        print("Message: ")
+        from bin2text import bits_to_text
+
+        print(bits_to_text(bits))
         bits = []
     
     # # frame break
