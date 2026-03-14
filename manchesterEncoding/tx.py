@@ -14,16 +14,10 @@ if not pi.connected:
     exit()
 
 def transmit_binary_manchester(packet_data):
-    length = packet_data.bit_length() - 1
-    bit_string = bin(packet_data)[3:]
-
-    new_data = int(bit_string, 2)
-
-    b_str = bin(new_data)[2:]
-
-    add_start = "000101" + b_str
+    print("Before:", packet_data)
+    add_start = "000101" + packet_data
     add_end = add_start + "101000"
-
+    
     packet_data = int(add_end, 2)
     length = packet_data.bit_length()
     pi.set_mode(GPIO_PIN, pigpio.OUTPUT)
@@ -67,17 +61,17 @@ UserInput = input("Send Message > ")
 from bin2text import text_to_bits
 bitsIn = text_to_bits(UserInput)
 
-bits_val = 0
+"""bits_val = 0
 for bit in bitsIn:
     # Shift existing bits left by 1, then OR with the new bit
     bits_val = (bits_val << 1) | bit
 
 #bits_val |= (1 << bits_val.bit_length())
-print(bits_val)
+print(bits_val)"""
 try:
     # my_data = 0b111000001100101011011100110100101110011011100000110111101110000
 
-    transmit_binary_manchester(bits_val)
+    transmit_binary_manchester(bitsIn) # as string
     
 finally:
     pi.stop()

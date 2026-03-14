@@ -17,11 +17,20 @@ def bits_to_text(bits):
         
     return "".join(chars)
 
-'''# --- Quick Test ---
-msg = "Hello!"
+# --- Quick Test ---
+msg = "Hello"
+string = "100001100101011011000110110001101111"
+string = "0100" + string
+bits = [int(b) for b in string]
+
+
 bit_list = text_to_bits(msg)
-decoded = bits_to_text(bit_list)
+for b in bit_list:
+    print(b, end="")
+print()
+print(string)
+decoded = bits_to_text(bits)
 
 print(f"Text:    {msg}")
-print(f"Bits:    {bit_list}")
-print(f"Decoded: {decoded}")'''
+print(f"Bits:    {bits}")
+print(f"Decoded: {decoded}")
