@@ -22,7 +22,7 @@ def transmit_binary_manchester(packet_data):
     b_str = bin(new_data)[2:]
 
     add_start = "0" + b_str
-    add_end = add_start + "0"
+    add_end = add_start + "101000"
 
     packet_data = int(add_end, 2)
     length = packet_data.bit_length()
